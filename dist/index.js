@@ -16364,13 +16364,17 @@ async function action(payload) {
     reportName,
   });
   await addComment(pullRequestNumber, comment, reportName);
-  await addCheck(comment, reportName, commit, failBelowThreshold);
+
+  let belowThreshold = false;
 
   if (failBelowThreshold) {
     if (reports.some((report) => Math.floor(report.total) < minimumCoverage)) {
+      belowThreshold = true
       core.setFailed("Minimum coverage requirement was not satisfied");
     }
   }
+  
+  await addCheck(comment, reportName, commit, belowThreshold);
 }
 
 function markdownReport(reports, commit, options) {
@@ -16491,7 +16495,7 @@ async function addComment(pullRequestNumber, body, reportName) {
   }
 }
 
-async function addCheck(body, reportName, sha, failBelowThreshold) {
+async function addCheck(body, reportName, sha, belowThreshold) {
   const checkName = reportName ? reportName : "coverage";
 
   //TODO update??
@@ -16500,7 +16504,7 @@ async function addCheck(body, reportName, sha, failBelowThreshold) {
     name: checkName,
     head_sha: sha,
     status: "completed",
-    conclusion: failBelowThreshold ? "failure": "success",
+    conclusion: belowThreshold ? "failure": "success",
     output: {
       title: checkName,
       summary: body
