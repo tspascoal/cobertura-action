@@ -193,8 +193,6 @@ async function addComment(pullRequestNumber, body, reportName) {
 async function addCheck(body, reportName, sha, belowThreshold) {
   const checkName = reportName ? reportName : "coverage";
 
-  //TODO update??
-
   await client.rest.checks.create({
     name: checkName,
     head_sha: sha,
@@ -227,12 +225,8 @@ async function pullRequestInfo(payload = {}) {
     required: false,
   });
 
-  core.debug(`PR ${pullRequestNumber}`)
-
   if (pullRequestNumber) {
     // use the supplied PR
-
-core.debug(`getting PR from ${JSON.stringify(github.context.repo)}`)
 
     pullRequestNumber = parseInt(pullRequestNumber);
     const { data } = await client.rest.pulls.get({
