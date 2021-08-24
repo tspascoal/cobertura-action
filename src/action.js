@@ -61,18 +61,15 @@ async function action(payload) {
     filteredFiles: changedFiles,
     reportName,
   });
-  await addComment(pullRequestNumber, comment, reportName);
-
-  let belowThreshold = false;
-
-  if (failBelowThreshold) {
-    if (reports.some((report) => Math.floor(report.total) < minimumCoverage)) {
-      belowThreshold = true
-      core.setFailed("Minimum coverage requirement was not satisfied");
-    }
-  }
   
+  const belowThreshold = reports.some((report) => Math.floor(report.total) < minimumCoverage);
+
+  await addComment(pullRequestNumber, comment, reportName);
   await addCheck(comment, reportName, commit, belowThreshold);
+  
+  if (failBelowThreshold && belowThreshold) {
+    core.setFailed("Minimum coverage requirement was not satisfied");
+  }  
 }
 
 function markdownReport(reports, commit, options) {
