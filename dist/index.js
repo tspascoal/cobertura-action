@@ -16364,7 +16364,7 @@ async function action(payload) {
     reportName,
   });
   await addComment(pullRequestNumber, comment, reportName);
-  await addCheck(comment, reportName, commit);
+  await addCheck(comment, reportName, commit, failBelowThreshold);
 
   if (failBelowThreshold) {
     if (reports.some((report) => Math.floor(report.total) < minimumCoverage)) {
@@ -16491,7 +16491,7 @@ async function addComment(pullRequestNumber, body, reportName) {
   }
 }
 
-async function addCheck(body, reportName, sha) {
+async function addCheck(body, reportName, sha, failBelowThreshold) {
   const checkName = reportName ? reportName : "coverage";
 
   //TODO update??
@@ -16500,11 +16500,10 @@ async function addCheck(body, reportName, sha) {
     name: checkName,
     head_sha: sha,
     status: "completed",
-    conclusion: "success", // TODO
+    conclusion: failBelowThreshold ? "failure": "success",
     output: {
       title: checkName,
-      summary: body,
-      text: body,
+      summary: body
     },
     ...github.context.repo,
   });
