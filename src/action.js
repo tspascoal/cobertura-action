@@ -62,6 +62,7 @@ async function action(payload) {
     reportName,
   });
   await addComment(pullRequestNumber, comment, reportName);
+  await addCheck(comment, reportName, commit);
 
   if (failBelowThreshold) {
     if (reports.some((report) => Math.floor(report.total) < minimumCoverage)) {
@@ -165,7 +166,7 @@ function markdownReport(reports, commit, options) {
 }
 
 async function addComment(pullRequestNumber, body, reportName) {
-  const comments = await client.issues.listComments({
+  const comments = await client.rest.issues.listComments({
     issue_number: pullRequestNumber,
     ...github.context.repo,
   });
@@ -174,13 +175,13 @@ async function addComment(pullRequestNumber, body, reportName) {
     comment.body.includes(commentFilter)
   );
   if (comment != null) {
-    await client.issues.updateComment({
+    await client.rest.issues.updateComment({
       comment_id: comment.id,
       body: body,
       ...github.context.repo,
     });
   } else {
-    await client.issues.createComment({
+    await client.rest.issues.createComment({
       issue_number: pullRequestNumber,
       body: body,
       ...github.context.repo,
@@ -188,8 +189,27 @@ async function addComment(pullRequestNumber, body, reportName) {
   }
 }
 
+async function addCheck(body, reportName, sha) {
+  const checkName = reportName ? reportName : "coverage";
+
+  //TODO update??
+
+  await client.rest.checks.create({
+    name: checkName,
+    head_sha: sha,
+    status: "completed",
+    conclusion: "success", // TODO
+    output: {
+      title: checkName,
+      summary: body,
+      text: body,
+    },
+    ...github.context.repo,
+  });
+}
+
 async function listChangedFiles(pullRequestNumber) {
-  const files = await client.pulls.listFiles({
+  const files = await client.rest.pulls.listFiles({
     pull_number: pullRequestNumber,
     ...github.context.repo,
   });
@@ -207,10 +227,15 @@ async function pullRequestInfo(payload = {}) {
     required: false,
   });
 
+  core.debug(`PR ${pullRequestNumber}`)
+
   if (pullRequestNumber) {
     // use the supplied PR
+
+core.debug(`getting PR from ${JSON.stringify(github.context.repo)}`)
+
     pullRequestNumber = parseInt(pullRequestNumber);
-    const { data } = await client.pulls.get({
+    const { data } = await client.rest.pulls.get({
       pull_number: pullRequestNumber,
       ...github.context.repo,
     });
@@ -218,7 +243,7 @@ async function pullRequestInfo(payload = {}) {
   } else if (payload.workflow_run) {
     // fetch all open PRs and match the commit hash.
     commit = payload.workflow_run.head_commit.id;
-    const { data } = await client.pulls.list({
+    const { data } = await client.rest.pulls.list({
       ...github.context.repo,
       state: "open",
     });
@@ -239,5 +264,6 @@ module.exports = {
   action,
   markdownReport,
   addComment,
+  addCheck,
   listChangedFiles,
 };

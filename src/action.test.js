@@ -57,7 +57,9 @@ test("action", async () => {
     .post(`/repos/${owner}/${repo}/issues/${prNumber}/comments`)
     .reply(200)
     .get(`/repos/${owner}/${repo}/issues/${prNumber}/comments`)
-    .reply(200, [{ body: "some body", id: 123 }]);
+    .reply(200, [{ body: "some body", id: 123 }])
+    .post(`/repos/${owner}/${repo}/check-runs`)    
+    .reply(200);
   await action({
     pull_request: { number: prNumber, head: { sha: "deadbeef" } },
   });
@@ -88,7 +90,9 @@ test("action triggered by workflow event", async () => {
           sha: "deadbeef",
         },
       },
-    ]);
+    ])
+    .post(`/repos/${owner}/${repo}/check-runs`)    
+    .reply(200);
   await action({
     workflow_run: { head_commit: { id: "deadbeef" } },
   });
@@ -116,7 +120,9 @@ test("action passing pull request number directly", async () => {
       head: {
         sha: "deadbeef",
       },
-    });
+    })
+    .post(`/repos/${owner}/${repo}/check-runs`)    
+    .reply(200);
   await action({
     push: { ref: "master" },
   });
@@ -144,7 +150,10 @@ test("action only changes", async () => {
       {
         filename: "file1.txt",
       },
-    ]);
+    ])
+    .post(`/repos/${owner}/${repo}/check-runs`)    
+    .reply(200);
+
   await action({
     pull_request: { number: prNumber, head: { sha: "deadbeef" } },
   });
@@ -173,7 +182,10 @@ test("action with report name", async () => {
       {
         filename: "file1.txt",
       },
-    ]);
+    ])    
+    .post(`/repos/${owner}/${repo}/check-runs`)    
+    .reply(200);
+
   await action({
     pull_request: { number: prNumber, head: { sha: "deadbeef" } },
   });
@@ -197,7 +209,9 @@ test("action with crop missing lines", async () => {
     .post(`/repos/${owner}/${repo}/issues/${prNumber}/comments`)
     .reply(200)
     .get(`/repos/${owner}/${repo}/issues/${prNumber}/comments`)
-    .reply(200, [{ body: "some body", id: 123 }]);
+    .reply(200, [{ body: "some body", id: 123 }])
+    .post(`/repos/${owner}/${repo}/check-runs`)    
+    .reply(200);
   await action({
     pull_request: { number: prNumber, head: { sha: "deadbeef" } },
   });
@@ -227,10 +241,13 @@ test("action failing on coverage below threshold", async () => {
       head: {
         sha: "deadbeef",
       },
-    });
+    })
+    .post(`/repos/${owner}/${repo}/check-runs`)    
+    .reply(200);
+
   await action({
     push: { ref: "master" },
-  });
+  })
   expect(process.exitCode).toBe(1);
   expect(process.stdout.write).toHaveBeenCalledTimes(1);
   expect(process.stdout.write).toHaveBeenCalledWith(
@@ -261,7 +278,9 @@ test("action not failing on coverage above threshold", async () => {
       head: {
         sha: "deadbeef",
       },
-    });
+    })
+    .post(`/repos/${owner}/${repo}/check-runs`)    
+    .reply(200);
   await action({
     push: { ref: "master" },
   });
@@ -599,4 +618,15 @@ test("listChangedFiles", async () => {
       },
     ]);
   await listChangedFiles(prNumber);
+});
+
+test("addCheck", async () => {
+  const { addCheck } = require("./action");
+  const checkRunMock = nock("https://api.github.com")
+    .post(`/repos/${owner}/${repo}/check-runs`)    
+    .reply(200)
+
+  await addCheck("foo", "bar", "fake_sha");
+
+  expect(checkRunMock.pendingMocks().length).toBe(0)
 });
